@@ -417,6 +417,9 @@ class FoodSearchProblem:
     def getStartState(self):
         return self.start
 
+    def getGameState(self):
+        return self.startingGameState    
+
     def isGoalState(self, state):
         return state[1].count() == 0
 
@@ -454,6 +457,54 @@ class AStarFoodSearchAgent(SearchAgent):
         self.searchFunction = lambda prob: search.aStarSearch(prob, foodHeuristic)
         self.searchType = FoodSearchProblem
 
+
+def manhattanDistance (pointA, pointB):
+    return abs(pointA[0] - pointB[0]) + abs(pointA[1] - pointB[1])
+
+#Used for food heuristic 
+def closestPoint (fromPoint, candidatesList):
+    if len(candidatesList) == 0:
+        return None
+
+    closestPoint = candidatesList[0]
+    closestCost = manhattanDistance(fromPoint, closestPoint)
+    for candidate in candidatesList[1:]:
+        thisCost = manhattanDistance(fromPoint, candidate)
+        if thisCost < closestCost:
+            closestCost = thisCost
+            closestPoint = candidate
+  
+    return closestPoint  
+
+
+def foodHeuristic2(state, problem):
+    position, foodGrid = state
+    foodList = foodGrid.asList()
+    heuristic = 0
+    
+    if len(foodList) == 0:
+        return 0
+    
+    closestFood = closestPoint(position, foodList)
+
+    gameState = problem.getGameState()
+    d1 = mazeDistance(closestFood, position, gameState)
+
+    leftPoints = 0
+    for (x,y) in foodList:
+        flag = 0
+        if x!=position[0] and x!=closestFood[0]:
+            leftPoints = leftPoints + 1
+            flag = 1
+        
+        if flag == 0:
+            if y!=position[1] and y!=closestFood[1]:
+                leftPoints = leftPoints + 1
+        # if y!=position[1] and y!=closestFood[1] and x!=position[0] and x!=closestFood[0]:
+        #     leftPoints += 1
+    
+    #5543 nodes
+    return d1 + leftPoints
 def foodHeuristic(state, problem):
     """
     Your heuristic for the FoodSearchProblem goes here.
@@ -503,7 +554,18 @@ def foodHeuristic(state, problem):
             maxY = yDistance
         elif yDistance < minY:
             minY = yDistance
-    return maxX - minX + maxY - minY
+    heuristic1 = maxX - minX + maxY - minY
+    
+    #2nd heuristic=mazeDistance(my position, estimated closest food) + points left out(except those sharing row or col with these two pts)
+    heuristic2 = foodHeuristic2(state,problem)
+    
+    heuristic3 = 0
+    for food in foodList:
+        distance = mazeDistance(position, food, problem.startingGameState)
+        if distance > heuristic3:
+            heuristic3 = distance
+
+    return max([heuristic1,heuristic2,heuristic3])  
     
     return 0
 
@@ -576,11 +638,10 @@ def mazeDistance(point1, point2, gameState):
     Returns the maze distance between any two points, using the search functions
     you have already built. The gameState can be any game state -- Pacman's
     position in that state is ignored.
-
     Example usage: mazeDistance( (2,4), (5,6), gameState)
-
     This might be a useful helper function for your ApproximateSearchAgent.
     """
+    # print(point1)
     x1, y1 = point1
     x2, y2 = point2
     walls = gameState.getWalls()
